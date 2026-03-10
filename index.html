@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Yan & Him's Love Adventure</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://gs.jurieo.com/gemini/fonts-googleapis/css2?family=Noto+Serif+JP:wght@700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #fdf7f8; color: #4a5d4e; margin: 0; padding: 0; }
+        .sakura-pink { background-color: #ffb7c5; }
+        .matcha-green { background-color: #98ad7d; }
+        .jp-title { font-family: 'Noto Serif JP', serif; }
+        .app-card { background: white; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); overflow: hidden; border: 1px solid rgba(237, 180, 199, 0.1); }
+        .avatar-frame { position: relative; width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); overflow: hidden; background: white; cursor: pointer; }
+        .avatar-frame img { width: 100%; height: 100%; object-fit: cover; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .bg-pattern { background-image: radial-gradient(#ffb7c5 0.5px, transparent 0.5px); background-size: 20px 20px; }
+    </style>
+</head>
+<body class="bg-pattern">
+
+<div id="app" class="max-w-md mx-auto min-h-screen relative pb-32">
+    
+    <header class="relative h-48 overflow-hidden border-b-2 border-pink-100">
+        <img src="cover.png" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=1000'">
+        <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
+            <h1 class="text-white text-xl jp-title font-bold tracking-wider">Yan&Him要一起去的地方✨✈️</h1>
+        </div>
+    </header>
+
+    <main class="p-5">
+        
+        <div v-if="activeNav === 'home'" class="space-y-6">
+            <div class="flex justify-center -mt-14 mb-4 relative z-10 gap-3">
+                <div class="avatar-frame" @click="triggerUpload('yan')">
+                    <img :src="avatars.yan">
+                    <input type="file" ref="yanInput" class="hidden" @change="handleUpload($event, 'yan')">
+                </div>
+                <div class="avatar-frame" @click="triggerUpload('him')">
+                    <img :src="avatars.him">
+                    <input type="file" ref="himInput" class="hidden" @change="handleUpload($event, 'him')">
+                </div>
+            </div>
+
+            <div class="app-card sakura-pink p-8 text-white text-center shadow-lg">
+                <p class="text-xs tracking-widest opacity-90">待完成願望</p>
+                <h2 class="text-6xl font-black my-2 jp-title">{{ pendingWishes.length }}</h2>
+                <p class="text-[10px] bg-white/20 inline-block px-3 py-1 rounded-full">一起集郵吧！</p>
+            </div>
+
+            <section>
+                <h3 class="text-xs font-bold text-gray-400 mb-3 tracking-widest">最近加入</h3>
+                <div v-for="w in wishes.slice(0, 3)" :key="w.id" class="app-card p-4 mb-3 flex justify-between items-center">
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-700">{{ w.title }}</h4>
+                        <p class="text-[10px] text-gray-400">{{ w.region }} · {{ w.category }}</p>
+                    </div>
+                    <i class="fas fa-heart text-pink-100"></i>
+                </div>
+            </section>
+        </div>
+
+        <div v-if="activeNav === 'list'">
+            <div class="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
+                <button v-for="c in categories" @click="activeCat = c" :class="activeCat === c ? 'sakura-pink text-white' : 'bg-white text-gray-400'" class="px-4 py-1.5 rounded-full text-xs shadow-sm transition whitespace-nowrap">{{ c }}</button>
+            </div>
+            
+            <div v-for="w in filteredPending" :key="w.id" class="app-card p-4 mb-3 flex items-center justify-between">
+                <div class="flex-1 pr-4">
+                    <div class="flex gap-2 mb-1">
+                        <span class="text-[9px] bg-pink-50 text-pink-400 px-2 py-0.5 rounded border border-pink-100">{{ w.category }}</span>
+                        <span class="text-[9px] bg-gray-50 text-gray-400 px-2 py-0.5 rounded">{{ w.region }}</span>
+                    </div>
+                    <h4 class="font-bold text-sm">{{ w.title }}</h4>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button @click="removeWish(w.id)" class="text-gray-200 hover:text-red-400 transition"><i class="fas fa-trash-alt text-lg"></i></button>
+                    <button @click="completeWish(w)" class="text-gray-200 hover:text-green-500 transition"><i class="fas fa-check-circle text-2xl"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="activeNav === 'study'">
+            <div class="flex bg-white rounded-xl p-1 mb-6 shadow-sm">
+                <button @click="studyTab = 'fish'" :class="studyTab === 'fish' ? 'matcha-green text-white' : 'text-gray-400'" class="flex-1 py-2 text-xs rounded-lg transition">魚魚研究室</button>
+                <button @click="studyTab = 'matcha'" :class="studyTab === 'matcha' ? 'bg-emerald-700 text-white' : 'text-gray-400'" class="flex-1 py-2 text-xs rounded-lg transition">抹茶控清單</button>
+            </div>
+            
+            <div v-for="w in studyList" :key="w.id" class="app-card p-4 mb-3 flex justify-between items-center border-l-4 border-matcha-green">
+                <span class="text-sm font-medium">{{ w.title }} <small class="text-gray-400 ml-1">[{{w.region}}]</small></span>
+                <div class="flex gap-3">
+                    <button @click="removeWish(w.id)" class="text-gray-200 hover:text-red-400"><i class="fas fa-trash-alt"></i></button>
+                    <button @click="completeWish(w)" class="text-gray-200 hover:text-green-500"><i class="fas fa-check-circle text-xl"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="activeNav === 'memory'" class="space-y-4">
+            <h3 class="jp-title text-pink-400 font-bold mb-4">Memory 相簿 ✨</h3>
+            <div v-for="m in completedWishes" :key="m.id" class="app-card p-4 border-l-4 border-pink-200 relative">
+                <button @click="removeWish(m.id)" class="absolute top-3 right-3 text-gray-200 hover:text-red-400"><i class="fas fa-times"></i></button>
+                <p class="text-[10px] text-gray-400 mb-1">{{ m.doneDate }} 完成了！</p>
+                <h4 class="font-bold text-sm text-gray-700">{{ m.title }}</h4>
+                <p class="text-[11px] text-pink-400 mt-2 bg-pink-50/50 p-2 rounded italic font-medium">"{{ m.diary }}"</p>
+            </div>
+        </div>
+
+    </main>
+
+    <div class="fixed bottom-24 right-6 z-50">
+        <button @click="showAdd = true" class="w-14 h-14 sakura-pink text-white rounded-full shadow-2xl flex items-center justify-center text-2xl active:scale-90 transition">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <div v-if="showAdd" class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6 backdrop-blur-sm">
+        <div class="bg-white w-full rounded-3xl p-6 shadow-2xl space-y-4">
+            <h3 class="font-bold text-center jp-title">加入新願望</h3>
+            <input v-model="form.title" type="text" placeholder="想做什麼呢？" class="w-full border-b p-2 outline-none text-sm">
+            <div class="flex gap-2">
+                <select v-model="form.region" class="flex-1 border-b p-2 outline-none text-sm bg-white">
+                    <option>香港</option><option>日本</option><option>其他</option>
+                </select>
+                <select v-model="form.category" class="flex-1 border-b p-2 outline-none text-sm bg-white">
+                    <option>想去的地方</option><option>想食的東西</option><option>魚魚</option><option>抹茶</option>
+                </select>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button @click="showAdd = false" class="flex-1 py-3 bg-gray-50 rounded-xl text-gray-400 text-sm">取消</button>
+                <button @click="save" class="flex-1 py-3 sakura-pink text-white rounded-xl font-bold text-sm shadow-md">加入</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t h-20 flex justify-around items-center px-4 z-40 shadow-lg">
+        <div @click="activeNav = 'home'" :class="activeNav === 'home' ? 'text-pink-400' : 'text-gray-300'" class="flex flex-col items-center gap-1">
+            <i class="fas fa-home"></i><span class="text-[8px] font-bold">主頁</span>
+        </div>
+        <div @click="activeNav = 'list'" :class="activeNav === 'list' ? 'text-pink-400' : 'text-gray-300'" class="flex flex-col items-center gap-1">
+            <i class="fas fa-list"></i><span class="text-[8px] font-bold">待辦</span>
+        </div>
+        <div class="w-12"></div>
+        <div @click="activeNav = 'study'" :class="activeNav === 'study' ? 'text-pink-400' : 'text-gray-300'" class="flex flex-col items-center gap-1">
+            <i class="fas fa-utensils"></i><span class="text-[8px] font-bold">研究</span>
+        </div>
+        <div @click="activeNav = 'memory'" :class="activeNav === 'memory' ? 'text-pink-400' : 'text-gray-300'" class="flex flex-col items-center gap-1">
+            <i class="fas fa-heart"></i><span class="text-[8px] font-bold">回憶</span>
+        </div>
+    </nav>
+</div>
+
+<script>
+const { createApp, ref, computed, watch, onMounted } = Vue;
+createApp({
+    setup() {
+        const activeNav = ref('home');
+        const activeCat = ref('全部');
+        const studyTab = ref('fish');
+        const showAdd = ref(false);
+        const wishes = ref([]);
+        const form = ref({ title: '', region: '香港', category: '想去的地方' });
+        const categories = ['全部', '想去的地方', '想食的東西', '魚魚', '抹茶'];
+        const avatars = ref({ 
+            yan: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Yan', 
+            him: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Him' 
+        });
+
+        onMounted(() => {
+            const saved = localStorage.getItem('yan_him_vFinal');
+            if (saved) wishes.value = JSON.parse(saved);
+            const savedAvatars = localStorage.getItem('yan_him_avatars_vFinal');
+            if (savedAvatars) avatars.value = JSON.parse(savedAvatars);
+        });
+
+        watch(wishes, (v) => localStorage.setItem('yan_him_vFinal', JSON.stringify(v)), { deep: true });
+        watch(avatars, (v) => localStorage.setItem('yan_him_avatars_vFinal', JSON.stringify(v)), { deep: true });
+
+        const triggerUpload = (p) => {
+            if (p === 'yan') document.querySelector('input[ref="yanInput"]').click();
+            else document.querySelector('input[ref="himInput"]').click();
+        };
+
+        const handleUpload = (e, p) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => avatars.value[p] = ev.target.result;
+            reader.readAsDataURL(file);
+        };
+
+        const save = () => {
+            if (!form.value.title) return;
+            wishes.value.unshift({ ...form.value, id: Date.now(), done: false });
+            showAdd.value = false;
+            form.value = { title: '', region: '香港', category: '想去的地方' };
+        };
+
+        const completeWish = (w) => {
+            const comment = prompt("完成這件事的心情是？", "太好玩啦！");
+            if (comment !== null) {
+                w.done = true;
+                w.doneDate = new Date().toLocaleDateString();
+                w.diary = comment || "達成願望！";
+            }
+        };
+
+        const removeWish = (id) => {
+            if (confirm("確定要刪除嗎？")) {
+                wishes.value = wishes.value.filter(item => item.id !== id);
+            }
+        };
+
+        const pendingWishes = computed(() => wishes.value.filter(w => !w.done));
+        const completedWishes = computed(() => wishes.value.filter(w => w.done));
+        const filteredPending = computed(() => activeCat.value === '全部' ? pendingWishes.value : pendingWishes.value.filter(w => w.category === activeCat.value));
+        const studyList = computed(() => {
+            const cat = studyTab.value === 'fish' ? '魚魚' : '抹茶';
+            return pendingWishes.value.filter(w => w.category === cat);
+        });
+
+        return { 
+            activeNav, activeCat, studyTab, showAdd, wishes, form, categories, avatars,
+            save, completeWish, removeWish, handleUpload,
+            pendingWishes, completedWishes, filteredPending, studyList
+        };
+    },
+    methods: {
+        triggerUpload(p) {
+            this.$refs[p + 'Input'].click();
+        }
+    }
+}).mount('#app');
+</script>
+</body>
+</html>
